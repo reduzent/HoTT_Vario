@@ -1,31 +1,17 @@
 /*
-  Software serial multple serial test
+Sources:
+https://github.com/betaflight/betaflight/blob/master/src/main/telemetry/hott.h
+https://github.com/chriszero/ArduHottSensor
 
-  Receives from the hardware serial, sends to software serial.
-  Receives from software serial, sends to hardware serial.
 
-  The circuit:
-   RX is digital pin 10 (connect to TX of other device)
-   TX is digital pin 11 (connect to RX of other device)
-
-  Note:
-  Not all pins on the Mega and Mega 2560 support change interrupts,
-  so only the following can be used for RX:
-  10, 11, 12, 13, 50, 51, 52, 53, 62, 63, 64, 65, 66, 67, 68, 69
-
-  Not all pins on the Leonardo support change interrupts,
-  so only the following can be used for RX:
-  8, 9, 10, 11, 14 (MISO), 15 (SCK), 16 (MOSI).
-
-  created back in the mists of time
-  modified 25 May 2012
-  by Tom Igoe
-  based on Mikal Hart's example
-
-  This example code is in the public domain.
 
 */
 #include <SoftwareSerial.h>
+#include <SFE_BMP180.h>
+#include <Wire.h>
+
+SFE_BMP180 pressure;
+double baseline;
 
 byte sendBuffer[] = {
   0x7c, 0x89, 0x00, 0x90, 0x00,
@@ -35,7 +21,7 @@ byte sendBuffer[] = {
   0x44, 0x75, // climbrate
   0x3a, 0x75, // climbrate_3s
   0x26, 0x75, // climbrate_10s
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x61, 0x61, 0x61, 0x61, 0x20, 0x61, 0x62, 0x62, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00,  // MSG_TEXT (length=21)
   0x00, 0x00, 0x00, // free chars
@@ -59,11 +45,23 @@ void setup() {
 
   // set the data rate for the SoftwareSerial port
   mySerial.begin(19200);
-  pinMode(LEDPin, OUTPUT);
 
+  // initialize BMP180
+  if (pressure.begin()) {
+    baseline = getPressure();
+  }
+  else
+  {
+    while(1);
+  }
+  pinMode(LEDPin, OUTPUT);
 }
 
 void loop() { // run over and over
+  double alt,Press;
+  Press = getPressure();
+  alt = pressure.altitude(Press,baseline);
+
   if (mySerial.available()) {
     tnow = millis();
 
@@ -91,6 +89,60 @@ void loop() { // run over and over
         // Kopiert bis hier
 
         digitalWrite(LEDPin, LOW);
+      }
+    }
+  }
+}
+
+double getPressure()
+{
+  char status;
+  double T,P;
+
+  // You must first get a temperature measurement to perform a pressure reading.
+
+  // Start a temperature measurement:
+  // If request is successful, the number of ms to wait is returned.
+  // If request is unsuccessful, 0 is returned.
+
+  status = pressure.startTemperature();
+  if (status != 0)
+  {
+    // Wait for the measurement to complete:
+
+    delay(status);
+
+    // Retrieve the completed temperature measurement:
+    // Note that the measurement is stored in the variable T.
+    // Use '&T' to provide the address of T to the function.
+    // Function returns 1 if successful, 0 if failure.
+
+    status = pressure.getTemperature(T);
+    if (status != 0)
+    {
+      // Start a pressure measurement:
+      // The parameter is the oversampling setting, from 0 to 3 (highest res, longest wait).
+      // If request is successful, the number of ms to wait is returned.
+      // If request is unsuccessful, 0 is returned.
+
+      status = pressure.startPressure(3);
+      if (status != 0)
+      {
+        // Wait for the measurement to complete:
+        delay(status);
+
+        // Retrieve the completed pressure measurement:
+        // Note that the measurement is stored in the variable P.
+        // Use '&P' to provide the address of P.
+        // Note also that the function requires the previous temperature measurement (T).
+        // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
+        // Function returns 1 if successful, 0 if failure.
+
+        status = pressure.getPressure(P,T);
+        if (status != 0)
+        {
+          return(P);
+        }
       }
     }
   }
