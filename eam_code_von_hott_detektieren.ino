@@ -34,7 +34,7 @@ byte sendBuffer[] = {
 byte fromHott;
 int HottCom = 10;
 int LEDPin = 13;
-
+byte status;
 
 SoftwareSerial HottSerial(HottCom, HottCom); // RX, TX
 
@@ -45,8 +45,16 @@ void setup() {
   Serial.begin(9600);
 
   // initialize BMP180
-  if (pressure.begin()) {
-    baseline = getPressure();
+  if (pressure.begin()) {  
+    char status;
+    double T,P;
+    status = pressure.startTemperature();
+    delay(status);
+    status = pressure.getTemperature(T);
+    status = pressure.startPressure(3);
+    delay(status);
+    status = pressure.getPressure(P,T);
+    baseline = P;
   }
   pinMode(LEDPin, OUTPUT);
 }
