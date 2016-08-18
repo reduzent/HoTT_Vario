@@ -3,34 +3,19 @@ Sources:
 https://github.com/betaflight/betaflight/blob/master/src/main/telemetry/hott.h
 https://github.com/chriszero/ArduHottSensor
 
-
-
 */
 #include <SoftwareSerial.h>
 #include <SFE_BMP180.h>
 #include <Wire.h>
+#include "hott_vario.h"
 
 SFE_BMP180 pressure;
 double baseline;
 int alt;
 
 
-byte sendBuffer[] = {
-  0x7c, 0x89, 0x00, 0x90, 0x00,
-  0xf4, 0x01, // altitude
-  0xbc, 0x02, // altitude_max
-  0xf2, 0x01, // altitude_min
-  0x44, 0x75, // climbrate
-  0x3a, 0x75, // climbrate_3s
-  0x26, 0x75, // climbrate_10s
-  0x61, 0x61, 0x61, 0x61, 0x20, 0x61, 0x62, 0x62, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  0x00,  // MSG_TEXT (length=21)
-  0x00, 0x00, 0x00, // free chars
-  0x00, // compass direction
-  0x00, // version
-  0x7d  // stop byte
-  };
+byte sendBuffer[44];
+
 
 
 byte fromHott;
@@ -67,7 +52,12 @@ void loop() {
     if (fromHott == 0x89) {    // 0x89: module ID of VARIO
       char status;
       double T,P;
-  
+
+      hottBuildVario();
+
+      Serial.print("altitude: ");
+      Serial.println(HOTT_VARIO_MSG.altitude);
+             
       status = pressure.startTemperature(); // Let's start the temp measurement before anything else.
       delay(5); // HoTT wants the request to be answered with a delay of 5ms
                 // We use that for the temperature measurement of the BMP180, too
@@ -93,14 +83,36 @@ void loop() {
 
       // Now approx. 150ms have been passed since we started pressure measurement.
       // Time to get pressure.
-      status = pressure.getPressure(P,T);
+      status = pressure.getPressure(P,T);      
       alt = pressure.altitude(P,baseline);
 
+      
 
-      Serial.print("altitude: ");
-      Serial.println(alt);
     }
   }
+}
+
+void hottBuildVario() {
+  HOTT_VARIO_MSG.start_byte = 0x7c;
+  HOTT_VARIO_MSG.vario_sensor_id = 0x89;
+  HOTT_VARIO_MSG.warning_beeps = 0x00;
+  HOTT_VARIO_MSG.sensor_id = 0x90;
+  HOTT_VARIO_MSG.alarm_invers1 = 0x00;
+  HOTT_VARIO_MSG.altitude = alt + 500;
+  HOTT_VARIO_MSG.altitude_max = 722;
+  HOTT_VARIO_MSG.altitude_min = 497;
+  HOTT_VARIO_MSG.climbrate = 30010;
+  HOTT_VARIO_MSG.climbrate3s = 30030;
+  HOTT_VARIO_MSG.climbrate10s = 30100;
+  HOTT_VARIO_MSG.free_char1 = 0x00;
+  HOTT_VARIO_MSG.free_char2 = 0x00;
+  HOTT_VARIO_MSG.free_char3 = 0x00;
+  HOTT_VARIO_MSG.compass_direction = 0x00;
+  HOTT_VARIO_MSG.version = 0x00;
+  HOTT_VARIO_MSG.stop_byte = 0x7d;
+  
+  memcpy(&sendBuffer, &HOTT_VARIO_MSG, 44);
+  
 }
 
 
