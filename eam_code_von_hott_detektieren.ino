@@ -29,70 +29,55 @@ byte sendBuffer[] = {
   0x00, // version
   0x7d  // stop byte
   };
-byte first;
-byte second;
-int myPin = 10;
-int LEDPin = 13;
-unsigned long tnow;
-unsigned long tbefore;
-unsigned long ton;
 
-SoftwareSerial mySerial(myPin, myPin); // RX, TX
+
+byte fromHott;
+int HottCom = 10;
+int LEDPin = 13;
+
+
+SoftwareSerial HottSerial(HottCom, HottCom); // RX, TX
 
 void setup() {
-  // Open serial communications and wait for port to open:
-
 
   // set the data rate for the SoftwareSerial port
-  mySerial.begin(19200);
+  HottSerial.begin(19200);
   Serial.begin(9600);
+
   // initialize BMP180
-  if (pressure.begin()) {
-    baseline = getPressure();
-  }
-  else
-  {
-    while(1);
-  }
+  baseline = getPressure();
   pinMode(LEDPin, OUTPUT);
 }
 
-void loop() { // run over and over
+void loop() {
+  if (HottSerial.available()) {
+    fromHott = HottSerial.read();
+    if (fromHott == 0x89) {    // 0x89: module ID of VARIO
+
+        
+      digitalWrite(LEDPin, HIGH);
 
 
-  if (mySerial.available()) {
-    tnow = millis();
-
-    if ((tnow - tbefore) > 100) {
-      first = mySerial.read();
-      tbefore = tnow;
-    } else {
-      second = mySerial.read();
-      if (second == 0x89) {    // 0x89: module ID of VARIO
-        digitalWrite(LEDPin, HIGH);
-
-
-        // Kopiertere Code ab hier
-        delay(5);
-        pinMode(myPin, OUTPUT); // switchoff RX-Line
-        int ck = 0;
-        for (int i = 0; i < 45 - 1; i++) {
-          ck += sendBuffer[i];
-          mySerial.write(sendBuffer[i]);
-          delay(3);
-        }
-        mySerial.write((byte)ck); // write
-        delayMicroseconds(2000); // 2ms
-        pinMode(myPin, INPUT);
-        // Kopiert bis hier
-
-        digitalWrite(LEDPin, LOW);
-        double alt,Press;
-        Press = getPressure();
-        alt = pressure.altitude(Press,baseline);
-        Serial.print("altitude: ");
-        Serial.println(alt);
+      // Kopiertere Code ab hier
+      delay(5);
+      pinMode(HottCom, OUTPUT); // switchoff RX-Line
+      int ck = 0;
+      for (int i = 0; i < 45 - 1; i++) {
+        ck += sendBuffer[i];
+        HottSerial.write(sendBuffer[i]);
+        delay(3);
       }
+      HottSerial.write((byte)ck); // write
+      delayMicroseconds(2000); // 2ms
+      pinMode(HottCom, INPUT);
+      // Kopiert bis hier
+
+      digitalWrite(LEDPin, LOW);
+      double alt,Press;
+      Press = getPressure();
+      alt = pressure.altitude(Press,baseline);
+      Serial.print("altitude: ");
+      Serial.println(alt);
     }
   }
 }
@@ -112,8 +97,7 @@ double getPressure()
   if (status != 0)
   {
     // Wait for the measurement to complete:
-    Serial.print("BLA  BLA: ");
-    Serial.println(status);
+
     delay(status);
 
     // Retrieve the completed temperature measurement:
@@ -133,6 +117,7 @@ double getPressure()
       if (status != 0)
       {
         // Wait for the measurement to complete:
+
         delay(status);
 
         // Retrieve the completed pressure measurement:
