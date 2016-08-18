@@ -45,7 +45,9 @@ void setup() {
   Serial.begin(9600);
 
   // initialize BMP180
-  baseline = getPressure();
+  if (pressure.begin()) {
+    baseline = getPressure();
+  }
   pinMode(LEDPin, OUTPUT);
 }
 
