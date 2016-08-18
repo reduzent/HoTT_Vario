@@ -45,7 +45,7 @@ void setup() {
 
   // set the data rate for the SoftwareSerial port
   mySerial.begin(19200);
-
+  Serial.begin(9600);
   // initialize BMP180
   if (pressure.begin()) {
     baseline = getPressure();
@@ -58,9 +58,7 @@ void setup() {
 }
 
 void loop() { // run over and over
-  double alt,Press;
-  Press = getPressure();
-  alt = pressure.altitude(Press,baseline);
+
 
   if (mySerial.available()) {
     tnow = millis();
@@ -89,6 +87,11 @@ void loop() { // run over and over
         // Kopiert bis hier
 
         digitalWrite(LEDPin, LOW);
+        double alt,Press;
+        Press = getPressure();
+        alt = pressure.altitude(Press,baseline);
+        Serial.print("altitude: ");
+        Serial.println(alt);
       }
     }
   }
@@ -109,7 +112,8 @@ double getPressure()
   if (status != 0)
   {
     // Wait for the measurement to complete:
-
+    Serial.print("BLA  BLA: ");
+    Serial.println(status);
     delay(status);
 
     // Retrieve the completed temperature measurement:
