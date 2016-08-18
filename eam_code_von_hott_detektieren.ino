@@ -12,6 +12,8 @@ https://github.com/chriszero/ArduHottSensor
 
 SFE_BMP180 pressure;
 double baseline;
+int alt;
+
 
 byte sendBuffer[] = {
   0x7c, 0x89, 0x00, 0x90, 0x00,
@@ -63,13 +65,19 @@ void loop() {
   if (HottSerial.available()) {
     fromHott = HottSerial.read();
     if (fromHott == 0x89) {    // 0x89: module ID of VARIO
+      char status;
+      double T,P;
+  
+      status = pressure.startTemperature(); // Let's start the temp measurement before anything else.
+      delay(5); // HoTT wants the request to be answered with a delay of 5ms
+                // We use that for the temperature measurement of the BMP180, too
+                // since it wants the request to wait 5ms, too.
+      status = pressure.getTemperature(T); // We don't handle status and simply assume that
+                                           // it works.
+      status = pressure.startPressure(3);  // Then we directly start pressure measurement.
 
-        
-      digitalWrite(LEDPin, HIGH);
-
-
-      // Kopiertere Code ab hier
-      delay(5);
+      digitalWrite(LEDPin, HIGH); // indicate that we're start sending data
+          
       pinMode(HottCom, OUTPUT); // switchoff RX-Line
       int ck = 0;
       for (int i = 0; i < 45 - 1; i++) {
@@ -80,70 +88,19 @@ void loop() {
       HottSerial.write((byte)ck); // write
       delayMicroseconds(2000); // 2ms
       pinMode(HottCom, INPUT);
-      // Kopiert bis hier
+      
+      digitalWrite(LEDPin, LOW); // indicate that we're done sending data
 
-      digitalWrite(LEDPin, LOW);
-      double alt,Press;
-      Press = getPressure();
-      alt = pressure.altitude(Press,baseline);
+      // Now approx. 150ms have been passed since we started pressure measurement.
+      // Time to get pressure.
+      status = pressure.getPressure(P,T);
+      alt = pressure.altitude(P,baseline);
+
+
       Serial.print("altitude: ");
       Serial.println(alt);
     }
   }
 }
 
-double getPressure()
-{
-  char status;
-  double T,P;
-
-  // You must first get a temperature measurement to perform a pressure reading.
-
-  // Start a temperature measurement:
-  // If request is successful, the number of ms to wait is returned.
-  // If request is unsuccessful, 0 is returned.
-
-  status = pressure.startTemperature();
-  if (status != 0)
-  {
-    // Wait for the measurement to complete:
-
-    delay(status);
-
-    // Retrieve the completed temperature measurement:
-    // Note that the measurement is stored in the variable T.
-    // Use '&T' to provide the address of T to the function.
-    // Function returns 1 if successful, 0 if failure.
-
-    status = pressure.getTemperature(T);
-    if (status != 0)
-    {
-      // Start a pressure measurement:
-      // The parameter is the oversampling setting, from 0 to 3 (highest res, longest wait).
-      // If request is successful, the number of ms to wait is returned.
-      // If request is unsuccessful, 0 is returned.
-
-      status = pressure.startPressure(3);
-      if (status != 0)
-      {
-        // Wait for the measurement to complete:
-
-        delay(status);
-
-        // Retrieve the completed pressure measurement:
-        // Note that the measurement is stored in the variable P.
-        // Use '&P' to provide the address of P.
-        // Note also that the function requires the previous temperature measurement (T).
-        // (If temperature is stable, you can do one temperature measurement for a number of pressure measurements.)
-        // Function returns 1 if successful, 0 if failure.
-
-        status = pressure.getPressure(P,T);
-        if (status != 0)
-        {
-          return(P);
-        }
-      }
-    }
-  }
-}
 
