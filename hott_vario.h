@@ -34,11 +34,11 @@ static struct {
     int climbrate;         //#12 Climb rate in m/s. Steps of 0.01m/s. Value of 30000 = 0.00 m/s
     int climbrate3s;       //#14 Climb rate in m/3s. Steps of 0.01m/3s. Value of 30000 = 0.00 m/3s
     int climbrate10s;      //#16 Climb rate m/10s. Steps of 0.01m/10s. Value of 30000 = 0.00 m/10s
-    uint8_t text_msg[HOTT_VARIO_MSG_TEXT_LEN]; //#18 Free ASCII text message
+    char text_msg[HOTT_VARIO_MSG_TEXT_LEN]; //#18 Free ASCII text message
     uint8_t free_char1;          //#39 Free ASCII character.  appears right to home distance
     uint8_t free_char2;          //#40 Free ASCII character.  appears right to home direction
     uint8_t free_char3;          //#41 Free ASCII character.  appears? TODO: Check where this char appears
-    uint8_t compass_direction;   //#42 Compass heading in 2� steps. 1 = 2�
+    uint8_t compass_direction;   //#42 Compass heading in 2° steps. 1 = 2°
     uint8_t version;             //#43 version number TODO: more info?
     uint8_t stop_byte;           //#44 stop uint8_t, constant value 0x7d
 } HOTT_VARIO_MSG;
