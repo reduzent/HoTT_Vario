@@ -108,7 +108,7 @@ void hottBuildVario() {
   HOTT_VARIO_MSG.warning_beeps = 0x00;
   HOTT_VARIO_MSG.sensor_id = 0x90;
   HOTT_VARIO_MSG.alarm_invers1 = 0x00;
-  HOTT_VARIO_MSG.altitude = 500 + 18;
+  HOTT_VARIO_MSG.altitude = 500 + alt;
   HOTT_VARIO_MSG.altitude_max = 722;
   HOTT_VARIO_MSG.altitude_min = 497;
   HOTT_VARIO_MSG.climbrate = 30010;
