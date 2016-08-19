@@ -12,18 +12,20 @@
 SFE_BMP180 pressure;
 double baseline;
 int alt;
+byte counter = 0;
 byte toggle = 0;
 
-byte sendBuffer[44];
+byte sendBuffer[sizeof(HOTT_VARIO_MSG)];
 byte fromHott;
-int HottCom = 10;
+int HottCom = 8;
 int LEDPin = 13;
 byte status;
 
 SoftwareSerial HottSerial(HottCom, HottCom); // RX, TX
 
 void setup() {
-
+  randomSeed(analogRead(0));
+  
   // set the data rate for the SoftwareSerial port
   HottSerial.begin(19200);
   Serial.begin(9600);
@@ -46,64 +48,56 @@ void setup() {
 void loop() {
   if (HottSerial.available()) {
     fromHott = HottSerial.read();
+    
     if (fromHott == 0x89) {    // 0x89: module ID of VARIO
       char status;
       double T, P;
-      if (toggle == 1) {
-        toggle = 0;
-      } else {
-        toggle = 1;
-      }
+      
       hottBuildVario();
- 
-      //Serial.print("climbrate: ");
-      //Serial.println(HOTT_VARIO_MSG.climbrate10s);
 
-      status = pressure.startTemperature(); // Let's start the temp measurement before anything else.
-      delay(5); // HoTT wants the request to be answered with a delay of 5ms
+      // Let's start the temp measurement before anything else. We need it later for 
+      // to calibrate the pressure measuremnet
+      status = pressure.startTemperature(); 
+      // HoTT wants the request to be answered with a delay of 5ms
       // We use that for the temperature measurement of the BMP180, too
       // since it wants the request to wait 5ms, too.
-      status = pressure.getTemperature(T); // We don't handle status and simply assume that
-      // it works.
-      status = pressure.startPressure(3);  // Then we directly start pressure measurement.
-
-      digitalWrite(LEDPin, HIGH); // indicate that we're start sending data
-
-      pinMode(HottCom, OUTPUT); // switchoff RX-Line
+      delay(5);
+      // We don't handle status and simply assume that it works.
+      status = pressure.getTemperature(T);
+      // Then we directly start pressure measurement.
+      // 0: least precise, 3: most precise (takes the longest time); 
+      status = pressure.startPressure(3);
+      // indicate that we're start sending data
+      digitalWrite(LEDPin, HIGH);
+      // switchoff RX-Line
+      pinMode(HottCom, OUTPUT);
       byte ck = 0;
-      for (int i = 0; i < 45 - 1; i++) {
+      for (int i = 0; i < sizeof(sendBuffer); i++) {
         ck += sendBuffer[i];
         HottSerial.write(sendBuffer[i]);
-        delay(3);
+        delay(1);
       }
       HottSerial.write((byte)ck); // write
 
       // DEBUG OVER SERIAL
+      /*
       Serial.print("Toggle: ");
-      Serial.print(int(toggle), DEC);
-      Serial.print(" ");
-      Serial.print("size of: ");
-      Serial.print(sizeof(sendBuffer));
-      Serial.print(" ");
-      for (int i = 0; i < 45 - 1; i++) {
-        Serial.print(" ");
-        Serial.print(sendBuffer[i], HEX);
-        Serial.print(" ");
-      }
-      Serial.print(ck, HEX);
-      Serial.println(" OK, done");
+      Serial.println(toggle, DEC);
+      */
+      Serial.println(HOTT_VARIO_MSG.climbrate10s, DEC);
       // DEBUG UNTIL HERE
 
       delayMicroseconds(2000); // 2ms
       pinMode(HottCom, INPUT);
+      digitalWrite(HottCom, HIGH);
 
-      digitalWrite(LEDPin, LOW); // indicate that we're done sending data
+      // indicate that we're done sending data
+      digitalWrite(LEDPin, LOW);
 
       // Now approx. 150ms have been passed since we started pressure measurement.
       // Time to get pressure.
       status = pressure.getPressure(P, T);
       alt = pressure.altitude(P, baseline);
-
     }
   }
 }
@@ -114,20 +108,17 @@ void hottBuildVario() {
   HOTT_VARIO_MSG.warning_beeps = 0x00;
   HOTT_VARIO_MSG.sensor_id = 0x90;
   HOTT_VARIO_MSG.alarm_invers1 = 0x00;
-  HOTT_VARIO_MSG.altitude = 0 + 500;
+  HOTT_VARIO_MSG.altitude = 500 + 18;
   HOTT_VARIO_MSG.altitude_max = 722;
   HOTT_VARIO_MSG.altitude_min = 497;
   HOTT_VARIO_MSG.climbrate = 30010;
   HOTT_VARIO_MSG.climbrate3s =30030;
-  HOTT_VARIO_MSG.climbrate10s = 30300;
-  HOTT_VARIO_MSG.free_char1 = 0x00;
-  HOTT_VARIO_MSG.free_char2 = 0x00;
-  HOTT_VARIO_MSG.free_char3 = 0x00;
-  HOTT_VARIO_MSG.compass_direction = 0x00;
-  HOTT_VARIO_MSG.version = 0x00;
+  HOTT_VARIO_MSG.climbrate10s = random(29000, 31000);
+  HOTT_VARIO_MSG.compass_direction = 0x67;
+  HOTT_VARIO_MSG.version = 0x01;
   HOTT_VARIO_MSG.stop_byte = 0x7d;
 
-  memcpy(&sendBuffer, &HOTT_VARIO_MSG, 44);
+  memcpy(&sendBuffer, &HOTT_VARIO_MSG, sizeof(HOTT_VARIO_MSG));
 
 }
 
