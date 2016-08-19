@@ -55,8 +55,8 @@ void loop() {
 
       hottBuildVario();
 
-      Serial.print("altitude: ");
-      Serial.println(HOTT_VARIO_MSG.altitude);
+      Serial.print("climbrate: ");
+      Serial.println(HOTT_VARIO_MSG.climbrate10s);
              
       status = pressure.startTemperature(); // Let's start the temp measurement before anything else.
       delay(5); // HoTT wants the request to be answered with a delay of 5ms
@@ -103,7 +103,7 @@ void hottBuildVario() {
   HOTT_VARIO_MSG.altitude_min = 497;
   HOTT_VARIO_MSG.climbrate = 30010;
   HOTT_VARIO_MSG.climbrate3s = 30030;
-  HOTT_VARIO_MSG.climbrate10s = 30100;
+  HOTT_VARIO_MSG.climbrate10s = random(29000,31000);
   HOTT_VARIO_MSG.free_char1 = 0x00;
   HOTT_VARIO_MSG.free_char2 = 0x00;
   HOTT_VARIO_MSG.free_char3 = 0x00;
