@@ -1,7 +1,7 @@
 /*
-Sources:
-https://github.com/betaflight/betaflight/blob/master/src/main/telemetry/hott.h
-https://github.com/chriszero/ArduHottSensor
+  Sources:
+  https://github.com/betaflight/betaflight/blob/master/src/main/telemetry/hott.h
+  https://github.com/chriszero/ArduHottSensor
 
 */
 #include <SoftwareSerial.h>
@@ -12,12 +12,9 @@ https://github.com/chriszero/ArduHottSensor
 SFE_BMP180 pressure;
 double baseline;
 int alt;
-
+byte toggle = 0;
 
 byte sendBuffer[44];
-
-
-
 byte fromHott;
 int HottCom = 10;
 int LEDPin = 13;
@@ -32,15 +29,15 @@ void setup() {
   Serial.begin(9600);
 
   // initialize BMP180
-  if (pressure.begin()) {  
+  if (pressure.begin()) {
     char status;
-    double T,P;
+    double T, P;
     status = pressure.startTemperature();
     delay(status);
     status = pressure.getTemperature(T);
     status = pressure.startPressure(3);
     delay(status);
-    status = pressure.getPressure(P,T);
+    status = pressure.getPressure(P, T);
     baseline = P;
   }
   pinMode(LEDPin, OUTPUT);
@@ -51,42 +48,61 @@ void loop() {
     fromHott = HottSerial.read();
     if (fromHott == 0x89) {    // 0x89: module ID of VARIO
       char status;
-      double T,P;
-
+      double T, P;
+      if (toggle == 1) {
+        toggle = 0;
+      } else {
+        toggle = 1;
+      }
       hottBuildVario();
+ 
+      //Serial.print("climbrate: ");
+      //Serial.println(HOTT_VARIO_MSG.climbrate10s);
 
-      Serial.print("climbrate: ");
-      Serial.println(HOTT_VARIO_MSG.climbrate10s);
-             
       status = pressure.startTemperature(); // Let's start the temp measurement before anything else.
       delay(5); // HoTT wants the request to be answered with a delay of 5ms
-                // We use that for the temperature measurement of the BMP180, too
-                // since it wants the request to wait 5ms, too.
+      // We use that for the temperature measurement of the BMP180, too
+      // since it wants the request to wait 5ms, too.
       status = pressure.getTemperature(T); // We don't handle status and simply assume that
-                                           // it works.
+      // it works.
       status = pressure.startPressure(3);  // Then we directly start pressure measurement.
 
       digitalWrite(LEDPin, HIGH); // indicate that we're start sending data
-          
+
       pinMode(HottCom, OUTPUT); // switchoff RX-Line
-      int ck = 0;
+      byte ck = 0;
       for (int i = 0; i < 45 - 1; i++) {
         ck += sendBuffer[i];
         HottSerial.write(sendBuffer[i]);
         delay(3);
       }
       HottSerial.write((byte)ck); // write
+
+      // DEBUG OVER SERIAL
+      Serial.print("Toggle: ");
+      Serial.print(int(toggle), DEC);
+      Serial.print(" ");
+      Serial.print("size of: ");
+      Serial.print(sizeof(sendBuffer));
+      Serial.print(" ");
+      for (int i = 0; i < 45 - 1; i++) {
+        Serial.print(" ");
+        Serial.print(sendBuffer[i], HEX);
+        Serial.print(" ");
+      }
+      Serial.print(ck, HEX);
+      Serial.println(" OK, done");
+      // DEBUG UNTIL HERE
+
       delayMicroseconds(2000); // 2ms
       pinMode(HottCom, INPUT);
-      
+
       digitalWrite(LEDPin, LOW); // indicate that we're done sending data
 
       // Now approx. 150ms have been passed since we started pressure measurement.
       // Time to get pressure.
-      status = pressure.getPressure(P,T);      
-      alt = pressure.altitude(P,baseline);
-
-      
+      status = pressure.getPressure(P, T);
+      alt = pressure.altitude(P, baseline);
 
     }
   }
@@ -98,21 +114,21 @@ void hottBuildVario() {
   HOTT_VARIO_MSG.warning_beeps = 0x00;
   HOTT_VARIO_MSG.sensor_id = 0x90;
   HOTT_VARIO_MSG.alarm_invers1 = 0x00;
-  HOTT_VARIO_MSG.altitude = alt + 500;
+  HOTT_VARIO_MSG.altitude = 0 + 500;
   HOTT_VARIO_MSG.altitude_max = 722;
   HOTT_VARIO_MSG.altitude_min = 497;
   HOTT_VARIO_MSG.climbrate = 30010;
-  HOTT_VARIO_MSG.climbrate3s = 30030;
-  HOTT_VARIO_MSG.climbrate10s = random(29000,31000);
+  HOTT_VARIO_MSG.climbrate3s =30030;
+  HOTT_VARIO_MSG.climbrate10s = 30300;
   HOTT_VARIO_MSG.free_char1 = 0x00;
   HOTT_VARIO_MSG.free_char2 = 0x00;
   HOTT_VARIO_MSG.free_char3 = 0x00;
   HOTT_VARIO_MSG.compass_direction = 0x00;
   HOTT_VARIO_MSG.version = 0x00;
   HOTT_VARIO_MSG.stop_byte = 0x7d;
-  
+
   memcpy(&sendBuffer, &HOTT_VARIO_MSG, 44);
-  
+
 }
 
 
