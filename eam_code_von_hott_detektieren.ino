@@ -18,7 +18,7 @@ float alt = 0;                             // altitude (result from sensor)
 float alt_prev = 0;                        // previous sample
 byte sendBuffer[sizeof(HOTT_VARIO_MSG)];  
 byte fromHott;                             // serial read from HoTT GR-12
-int HottCom = 8;                           // Pin connected to telemetry pin of HoTT
+int HottCom = 2;                           // Pin connected to telemetry pin of HoTT
 int LEDPin = 13;
 byte status;                              
 SoftwareSerial HottSerial(HottCom, HottCom); // RX, TX
@@ -27,9 +27,9 @@ RunningAverage cr1s(5);
 RunningAverage cr3s(15);
 RunningAverage cr10s(50);
 
+
+
 void setup() {
-  randomSeed(analogRead(0));
-  
   // set the data rate for the SoftwareSerial port
   HottSerial.begin(19200);
 
@@ -101,8 +101,11 @@ void loop() {
       // Now approx. 100ms have passed since we started pressure measurement.
       // Time to take a sample.
       status = pressure.getPressure(P, T);
+      // altitude is calculated from current pressure and baseline pressure
       alt = pressure.altitude(P, baseline);
-      float rate = (alt - alt_prev) / 5.0;  // assuming we're taking 5 samples/s
+      // assuming we're taking 5 samples/s  (HoTT request a packet every 200ms)
+      float rate = (alt - alt_prev) * 5.0;
+      alt_prev = alt;
       cr1s.addValue(rate);
       cr3s.addValue(rate);
       cr10s.addValue(rate);
