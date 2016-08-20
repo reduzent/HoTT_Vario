@@ -1,4 +1,21 @@
 /*
+  Software for Vario / Altimeter compatible with the Graupner HoTT system
+
+  Tested with:
+    * BMP180
+    * Arduino Pro Mini (5V)
+    * GR-12 receiver
+
+  The software is configured for the following wiring:
+  
+  BMP180 / SDA       -- Arduino Pro Mini / A4
+  BMP180 / SCL       -- Arduino Pro Mini / A5
+  GR-12  / Channel 5 -- Arduino Pro Mini / 2
+
+  Released to the public domain
+  written by Roman Haefeli, 2016
+  borrowed a lot of code from similar projects
+
   Sources:
   https://github.com/betaflight/betaflight/blob/master/src/main/telemetry/hott.h
   https://github.com/chriszero/ArduHottSensor
@@ -76,7 +93,7 @@ void loop() {
       // Then we directly start pressure measurement.
       // 0: least precise, 3: most precise (takes the longest time); 
       status = pressure.startPressure(3);
-      // indicate that we're start sending data
+      // indicate that we start sending data
       digitalWrite(LEDPin, HIGH);
       // switchoff RX-Line
       pinMode(HottCom, OUTPUT);
@@ -91,7 +108,7 @@ void loop() {
       delayMicroseconds(2000); // 2ms
 
       // Now let's switch the HoTT pin back to INPUT 
-      // AND DON'T FORGET TO ACTIVATET THE PULL-UP RESISTOR!!
+      // AND DON'T FORGET TO ACTIVATE THE PULL-UP RESISTOR!!
       pinMode(HottCom, INPUT);
       digitalWrite(HottCom, HIGH);
 
