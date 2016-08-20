@@ -8,18 +8,24 @@
 #include <SFE_BMP180.h>
 #include <Wire.h>
 #include "hott_vario.h"
+#include "RunningAverage.h"
 
 
-SFE_BMP180 pressure;                      // pressure sensor
-double baseline;                          // pressure of current altitude
-int alt;                                  // altitude (result from sensor)
+
+SFE_BMP180 pressure;                       // pressure sensor
+float baseline;                            // pressure of current altitude
+float alt = 0;                             // altitude (result from sensor)
+float alt_prev = 0;                        // previous sample
 byte sendBuffer[sizeof(HOTT_VARIO_MSG)];  
-byte fromHott;                            // serial read from HoTT GR-12
-int HottCom = 8;                          // Pin connected to telemetry pin of HoTT
+byte fromHott;                             // serial read from HoTT GR-12
+int HottCom = 8;                           // Pin connected to telemetry pin of HoTT
 int LEDPin = 13;
 byte status;                              
-
 SoftwareSerial HottSerial(HottCom, HottCom); // RX, TX
+
+RunningAverage cr1s(5);
+RunningAverage cr3s(15);
+RunningAverage cr10s(50);
 
 void setup() {
   randomSeed(analogRead(0));
@@ -42,6 +48,10 @@ void setup() {
     baseline = P;
   }
   pinMode(LEDPin, OUTPUT);
+
+  cr1s.clear();
+  cr3s.clear();
+  cr10s.clear();
 }
 
 void loop() {
@@ -92,6 +102,10 @@ void loop() {
       // Time to take a sample.
       status = pressure.getPressure(P, T);
       alt = pressure.altitude(P, baseline);
+      float rate = (alt - alt_prev) / 5.0;  // assuming we're taking 5 samples/s
+      cr1s.addValue(rate);
+      cr3s.addValue(rate);
+      cr10s.addValue(rate);
     }
   }
 }
@@ -102,18 +116,18 @@ void hottBuildVario() {
   HOTT_VARIO_MSG.warning_beeps = 0x00;
   HOTT_VARIO_MSG.sensor_id = 0x90;
   HOTT_VARIO_MSG.alarm_invers1 = 0x00;
-  HOTT_VARIO_MSG.altitude = 500 + alt;
-  HOTT_VARIO_MSG.altitude_max = 722;
-  HOTT_VARIO_MSG.altitude_min = 497;
-  HOTT_VARIO_MSG.climbrate = 30010;
-  HOTT_VARIO_MSG.climbrate3s =30030;
-  HOTT_VARIO_MSG.climbrate10s = random(29000, 31000);
+  HOTT_VARIO_MSG.altitude =  alt + 500;
+  HOTT_VARIO_MSG.altitude_max = max(HOTT_VARIO_MSG.altitude_max, alt + 500);
+  HOTT_VARIO_MSG.altitude_min = min(HOTT_VARIO_MSG.altitude_min, alt + 500);
+  HOTT_VARIO_MSG.climbrate = 30000 + cr1s.getAverage() * 100;
+  HOTT_VARIO_MSG.climbrate3s =30000 + cr3s.getAverage() * 100;
+  HOTT_VARIO_MSG.climbrate10s = 30000 + cr10s.getAverage() * 100;
   HOTT_VARIO_MSG.compass_direction = 0x67;
   HOTT_VARIO_MSG.version = 0x01;
   HOTT_VARIO_MSG.stop_byte = 0x7d;
 
+  // Now let's copy the data packet to our send buffer
   memcpy(&sendBuffer, &HOTT_VARIO_MSG, sizeof(HOTT_VARIO_MSG));
-
 }
 
 
