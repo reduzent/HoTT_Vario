@@ -30,7 +30,7 @@ static struct {
                                 //TODO: more info
     int altitude;          //#06 Altitude low uint8_t. In meters. A value of 500 means 0m
     int altitude_max;      //#08 Max. measured altitude low uint8_t. In meters. A value of 500 means 0m
-    int altitude_min;      //#10 Min. measured altitude low uint8_t. In meters. A value of 500 means 0m
+    int altitude_min = 500;//#10 Min. measured altitude low uint8_t. In meters. A value of 500 means 0m
     int climbrate;         //#12 Climb rate in m/s. Steps of 0.01m/s. Value of 30000 = 0.00 m/s
     int climbrate3s;       //#14 Climb rate in m/3s. Steps of 0.01m/3s. Value of 30000 = 0.00 m/3s
     int climbrate10s;      //#16 Climb rate m/10s. Steps of 0.01m/10s. Value of 30000 = 0.00 m/10s
