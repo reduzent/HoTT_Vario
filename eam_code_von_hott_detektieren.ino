@@ -9,17 +9,15 @@
 #include <Wire.h>
 #include "hott_vario.h"
 
-SFE_BMP180 pressure;
-double baseline;
-int alt;
-byte counter = 0;
-byte toggle = 0;
 
-byte sendBuffer[sizeof(HOTT_VARIO_MSG)];
-byte fromHott;
-int HottCom = 8;
+SFE_BMP180 pressure;                      // pressure sensor
+double baseline;                          // pressure of current altitude
+int alt;                                  // altitude (result from sensor)
+byte sendBuffer[sizeof(HOTT_VARIO_MSG)];  
+byte fromHott;                            // serial read from HoTT GR-12
+int HottCom = 8;                          // Pin connected to telemetry pin of HoTT
 int LEDPin = 13;
-byte status;
+byte status;                              
 
 SoftwareSerial HottSerial(HottCom, HottCom); // RX, TX
 
@@ -28,9 +26,10 @@ void setup() {
   
   // set the data rate for the SoftwareSerial port
   HottSerial.begin(19200);
-  Serial.begin(9600);
 
-  // initialize BMP180
+  // initialize BMP180 sensor
+  // We measure the pressure at boot time so that we have reference
+  // for calculating the altitude
   if (pressure.begin()) {
     char status;
     double T, P;
@@ -48,18 +47,18 @@ void setup() {
 void loop() {
   if (HottSerial.available()) {
     fromHott = HottSerial.read();
-    
     if (fromHott == 0x89) {    // 0x89: module ID of VARIO
       char status;
       double T, P;
-      
+
+      // generate data packet to be sent
       hottBuildVario();
 
-      // Let's start the temp measurement before anything else. We need it later for 
+      // Let's start the temp measurement before anything else. We need it later 
       // to calibrate the pressure measuremnet
       status = pressure.startTemperature(); 
       // HoTT wants the request to be answered with a delay of 5ms
-      // We use that for the temperature measurement of the BMP180, too
+      // We use that for the temperature measurement of the BMP180, 
       // since it wants the request to wait 5ms, too.
       delay(5);
       // We don't handle status and simply assume that it works.
@@ -75,27 +74,22 @@ void loop() {
       for (int i = 0; i < sizeof(sendBuffer); i++) {
         ck += sendBuffer[i];
         HottSerial.write(sendBuffer[i]);
-        delay(1);
+        delay(2);
       }
       HottSerial.write((byte)ck); // write
 
-      // DEBUG OVER SERIAL
-      /*
-      Serial.print("Toggle: ");
-      Serial.println(toggle, DEC);
-      */
-      Serial.println(HOTT_VARIO_MSG.climbrate10s, DEC);
-      // DEBUG UNTIL HERE
-
       delayMicroseconds(2000); // 2ms
+
+      // Now let's switch the HoTT pin back to INPUT 
+      // AND DON'T FORGET TO ACTIVATET THE PULL-UP RESISTOR!!
       pinMode(HottCom, INPUT);
       digitalWrite(HottCom, HIGH);
 
       // indicate that we're done sending data
       digitalWrite(LEDPin, LOW);
 
-      // Now approx. 150ms have been passed since we started pressure measurement.
-      // Time to get pressure.
+      // Now approx. 100ms have passed since we started pressure measurement.
+      // Time to take a sample.
       status = pressure.getPressure(P, T);
       alt = pressure.altitude(P, baseline);
     }
